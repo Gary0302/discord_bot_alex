@@ -17,14 +17,16 @@ def get_response(user_input: str) -> str:
         c.execute("SELECT COUNT(*) FROM bills")
         row_count = c.fetchone()[0]
         results = dbf.insert_bill(row_count+1, money, method, note)
-        return f"bill successly added!    {' '.join(map(str, results))}"
+        search_result = dbf.search_bill(None, "no", row_count+1)
+        if results:
+            return f"bill successly added!   {search_result}"
     
     if lowered.split()[0] == "search":
         _, key, value = list(lowered.split())
         if key not in allowed_keys:
             return "Invalid search key."
         result = dbf.search_bill(_, key, value)
-        return result
+        return f"here is your result! {result}"
 
 
 
