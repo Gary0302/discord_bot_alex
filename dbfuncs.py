@@ -7,8 +7,6 @@ def insert_bill(no:int, money:int, method:str, note:str):
     with sqlite3.connect('bill.db') as conn:
         c = conn.cursor()
         c.execute("INSERT INTO bills values (?, ?, ?, ?, ?)",(no, money, method, note, True))
-        # c.execute("""SELECT * FROM bills WHERE no = ?""", (no+1,))
-        # results = list(c.fetchall())
         return True
 
 

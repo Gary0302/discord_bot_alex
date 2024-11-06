@@ -5,9 +5,16 @@ from responses import get_response
 import sqlite3
 from Bill import bill
 from discord.ext import commands
+import google.generativeai as genai
+
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
+
+
+
+
+
 
 intents : Intents = Intents.default()
 intents.message_content = True
