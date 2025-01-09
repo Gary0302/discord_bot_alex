@@ -2,54 +2,59 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key, find_dotenv
+import json
+import logging
 load_dotenv()
-client_secret = os.getenv("client_secret")
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar.readonly']
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
 def refresh_google_api_credentials():
     creds = None
-    if os.path.exists('credentials.json'):
-      creds = Credentials.from_authorized_user_file('credentials.json', SCOPES)
+    logger.info("Attempting to refresh/create Google API credentials.")
 
-    if not creds or not creds.valid:
-         print("Credentials not found or invalid, attempting to create new credentials.")
-         flow = InstalledAppFlow.from_client_secrets_file(
-                'client_secret_109139845358-u3iahd99pa263s47pfoo27l2mttda17b.apps.googleusercontent.com.json', SCOPES)
-         creds = flow.run_local_server(port=0)
-         if creds:
-             with open('credentials.json', 'w') as token:
-                 token.write(creds.to_json())
-             print("Google API credentials created successfully!")
-             return True
-         else:
-             print("Failed to create new credentials.")
-             return False
-    elif creds and creds.expired and creds.refresh_token:
-        try:
-            creds.refresh(Request())
-            with open('credentials.json', 'w') as token:
-                token.write(creds.to_json())
-            print("Google API credentials refreshed successfully!")
-            return True  # 表示憑證已刷新
-        except Exception as e:
-            print(f"Failed to refresh credentials: {e}")
-            print("Attempting to create new credentials.")
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'client_secret_109139845358-u3iahd99pa263s47pfoo27l2mttda17b.apps.googleusercontent.com.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-            if creds:
-              with open('credentials.json', 'w') as token:
-                  token.write(creds.to_json())
-              print("Google API credentials created successfully!")
-              return True
-            else:
-              print("Failed to create new credentials.")
-              return False
-    else:
-       print("Credentials are valid and not expired.")
-       return True
+    client_config = json.loads(os.getenv("client_secret"))
+    flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
+    try:
+        creds = flow.run_local_server(port=0)
+        if creds:
+            set_key(find_dotenv(), "GOOGLE_CREDENTIALS", creds.to_json())
+            logger.info("Google API credentials created successfully and saved to environment.")
+            return True
+        else:
+            logger.error("Failed to create new credentials.")
+            return False
+    except Exception as e:
+        logger.error(f"An error occurred during credential creation: {e}")
+        if creds and creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+                os.environ['GOOGLE_CREDENTIALS'] = creds.to_json()
+                logger.info("Google API credentials refreshed successfully and saved to environment.")
+                return True
+            except Exception as refresh_error:
+               logger.error(f"Failed to refresh credentials: {refresh_error}")
+               logger.error(f"Attempting to create new credentials again due to refresh failure: {refresh_error}")
+               try:
+                  creds = flow.run_local_server(port=0)
+                  if creds:
+                      os.environ['GOOGLE_CREDENTIALS'] = creds.to_json()
+                      logger.info("Google API credentials created successfully (after refresh fail) and saved to environment.")
+                      return True
+                  else:
+                      logger.error("Failed to create new credentials after refresh failure.")
+                      return False
+               except Exception as create_again_error:
+                   logger.error(f"Failed to create new credentials (after refresh fail): {create_again_error}")
+                   return False
+        else:
+            logger.error(f"Failed during the initial credential process: {e}")
+            return False
+
 
 if __name__ == "__main__":
     refresh_google_api_credentials()

@@ -1,6 +1,6 @@
 import logging
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv, get_key
 import schedule
 import time
 from gmail_handler import get_recent_emails
@@ -18,7 +18,7 @@ from google.auth.transport.requests import Request
 import tkinter as tk
 from config import get_config, start_ui, bot_running, setup_mongo
 import threading
-
+import json
 # 載入環境變數
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -47,8 +47,13 @@ creds = None
 
 async def refresh_credentials():
     global creds
-    if os.path.exists('credentials.json'):
-        creds = Credentials.from_authorized_user_file('credentials.json', SCOPES)
+    if os.path.exists(find_dotenv()):
+        try:
+            creds_json = get_key(find_dotenv(),'GOOGLE_CREDENTIALS')
+            creds = Credentials.from_authorized_user_info(info=json.loads(creds_json), scopes=SCOPES)
+            logger.info("Credentials loaded from .env")
+        except Exception as e:
+            logger.error(f"Failed to load credentials from .env: {e}")
 
     if not creds or not creds.valid:
         logger.info("Credentials not found or invalid, attempting to refresh/create credentials.")
@@ -189,4 +194,3 @@ if __name__ == "__main__":
     while bot_running:
         time.sleep(1)
     print("Bot stopped")
-
